@@ -1,13 +1,20 @@
-# tanzu-spring-cloud-gateway
+# tanzu-spring-cloud-gateway-k8s
 
-A guided tutorial for experimenting with Tanzu Spring Cloud Gateway on your laptop using a docker desktop k8s cluster.
+A guided tutorial for experimenting with Tanzu Spring Cloud Gateway and the API Portal on your laptop using a docker desktop k8s cluster.
 
-## Prerequisites
+This tutorial covers the following areas:
+1. Pre-requisites
+2. Install Spring Cloud Gateway for K8s - [link](#install-spring-cloud-gateway-for-k8s)
+3. Install API Portal for VMware Tanzu - [link](#install-api-portal)
+4. Deploy Animal Rescue Sample Application (Optional)
+5. Cleanup
+
+# Pre-requisites
 
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) 
 * [helm](https://helm.sh/docs/intro/install/#through-package-managers)
-* [Tanzu Network Account](https://network.pivotal.io/) so you can download Spring Cloud Gateway for Kuberentes 
+* [Tanzu Network Account](https://network.pivotal.io/) so you can download Spring Cloud Gateway for Kubernetes and API Portal for Tanzu 
 
 ### MacOS 
 
@@ -35,6 +42,8 @@ To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 2. check the version of helm you have installed using the command `helm version` this workshop has been tested with `version.BuildInfo{Version:"v3.5.0",GitCommit:"32c22239423b3b4ba6706d450bd044baffdcf9e6", GitTreeState:"dirty", GoVersion:"go1.15.6"}` earlier versions might not work.
 
 3. check the version of kustomize using the command `kustomize version` the workshop is tested with version 3.9.2
+
+# Install Spring Cloud Gateway for K8s
 
 ## Download Spring Cloud Gateway for Kubernetes 
 
@@ -144,7 +153,7 @@ scg-operator:
    image: "dev.registry.pivotal.io/spring-cloud-gateway/scg-operator:1.0.0"
 ```
 
-In the previous section we loaded the scgw container images to docker-desktop which makes the images avilable to 
+In the previous section we loaded the scgw container images to docker-desktop which makes the images available to 
 the k8s provided by docker desktop, making our lab simpler to run on a laptop. 
 
 4. Execute `./scripts/install-spring-cloud-gateway.sh` you should see output similar to below 
@@ -277,7 +286,7 @@ Forwarding from [::1]:8080 -> 8080
    just the start. 
    
 
-## Deploy Animal Rescue Sample Application (Optional)
+# Deploy Animal Rescue Sample Application (Optional)
 
 The [animal rescue](https://github.com/spring-cloud-services-samples/animal-rescue/) sample 
 application demonstrate many  commonly used features of spring cloud gateway. To deploy 
@@ -340,14 +349,194 @@ statefulset.apps/gateway-demo   2/2     6m54s
 9. Click the login button in the top right corner, you will be redirected to Auth0 you can login
    with a Google account and then you will be sent back to the application where you will 
    be able to see the userid in the top right corner. 
+   
 
-## Delete spring cloud gateway
+# Install API Portal for VMware Tanzu
 
-1. delete the demo gateway `kubectl delete -f demo`
-1. delete the demo gateway `kustomize build ./animal-rescue/ | kubectl delete -f -`
-2. Uninstall the operator `helm uninstall spring-cloud-gateway -n spring-cloud-gateway`
+## Download Spring Cloud Gateway for Kubernetes
+
+1. Download the [API Portal for VMware Tanzu from Tanzu Net](https://network.pivotal.io/products/api-portal/). <br>This workshop
+   is tested with version 1.0.0 so make sure to download 1.0.x release.
+
+2. Extract the downloaded tar.gz file `tar zxf api-portal-for-vmware-tanzu-1.0.0.tgz`; you will find the files shown below.
+```text
+.
+api-portal-for-vmware-tanzu-1.0.0
+├── helm
+│   ├── api-portal-1.0.0.tgz
+│   └── api-portal-image-values.yaml
+├── images
+│   └── api-portal-server-1.0.0.tar
+├── jars
+│   └── api-portal-server-1.0.0.jar
+└── scripts
+    ├── install-api-portal.sh
+    └── relocate-images.sh
+
+4 directories, 7 files
+```
+3. Inspect the contents of the `images` folder. Notice it contains a container imagea packaged as `.tar` file.
+   <br>The script located in `scripts/relocate-images.sh` is used to publish the `api-portal-server-1.0.0.tar` image into a private container registry accessible from the K8s cluster you
+   deploy the API Portal on.
+
+4. Inspect the `helm` chart folder and notice that it contains a gzipped helm chart. <br>This will
+   be used to install the API Portal.
+
+5. Inspect the `scripts` folder notice that it contains two shell scripts, one for publishing the private
+   container images to a registry (`relocate-images.sh`), and the second scripts runs a helm to install the API Portal (`install-api-portal.sh`)
+
+## Load the API Portal container image into Docker
+
+In a production deployment we would run the `scripts/relocate-images.sh` to publish the API Portal container images
+to a private container registry accessible from the K8s cluster that will be running API Portal. 
+
+In this workshop we are using Docker Desktop integrated Kubernetes, so we only need to load the container images into the local
+Docker Desktop.
+<br><br>
+Instructions are provided for both deployment models.
+
+1. Use the Docker CLI tool or your cloud provider CLI to authenticate to your image registry.
+   
+2.  Execute the command `docker load --input images/api-portal-server-1.0.0.tar` to load the API Portal  
+    container image into docker desktop, you should get output similar to the one below.
+
+````text
+...
+````
+
+2. If you choose to install API Portal to a private container registry, you can use the relocate script as follows:
+```shell
+> ./scripts/relocate-images.sh <registry>/api-portal
+
+For ex.:
+> ./scripts/relocate-images.sh gcr.io/pa-ddobrin/api-portal
+```
+
+3. Check your local docker images `docker images` and look for spring cloud gateway images. You should output similar
+   to below.
+
+```shell
+> docker images | grep portal
+gcr.io/pa-ddobrin/api-portal/api-portal-server                         1.0.0                                                   5bb19cc71708   41 years ago    247MB
+registry.pivotal.io/api-portal/api-portal-server                       1.0.0                                                   5bb19cc71708   41 years ago    247MB```
+```
+
+## Install API Portal
+
+1. The installation will install the API Portal in the `api-portal` namespace.
+
+2. The API Portal is installed using Helm. <br>We will need to create a `helm/api-portal-image-values.yaml`
+   file pointing at the  registry containing the API Portal container images. `helm/api-portal-image-values.yaml` file is normally
+   generated when the `scripts/relocate-images.sh` is run. We did not run the script as we don't have private container
+   registry to use during the workshop so will generate `helm/api-portal-image-values.yaml` manually. In the `helm` folder
+   create a file called `helm/api-portal-image-values.yaml` with the content below
+
+```yaml
+api-portal-server:
+   image: "registry/api-portal/api-portal-server:1.0.0"
+```
+
+In the previous section we loaded the API Portal container images to docker-desktop which makes the images available to
+the K8s provided by docker desktop, making our lab simpler to run on a laptop.
+
+3. If you do not use docker-desktop and install into a dedicated K8s cluster, then the `scripts/relocate-images.sh` script 
+   has already generated for you the `helm/api-portal-image-values.yaml` file with a content such as:
+```yaml
+api-portal-server:
+   image: "<registry>/api-portal/api-portal-server:1.0.0"
+
+# ex.:   
+api-portal-server:
+  image: "gcr.io/pa-ddobrin/api-portal/api-portal-server:1.0.0"
+```
+   
+4. Execute `./scripts/install-api-portal.sh`. You should see output similar to below:
+```text
+> ./scripts/install-api-portal.sh
+
+...
+```
+
+5. execute the command  `kubectl get all -n api-portal` you should see a pod running the API Portal
+   as shown below.
+
+```shell
+> kubectl get all -n api-portal
+NAME                                     READY   STATUS    RESTARTS   AGE
+pod/api-portal-server-846cfc847f-qf9t2   1/1     Running   0          6d19h
+
+NAME                        TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+service/api-portal-server   ClusterIP   10.0.25.217   <none>        8080/TCP   6d19h
+
+NAME                                READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/api-portal-server   1/1     1            1           6d19h
+
+NAME                                           DESIRED   CURRENT   READY   AGE
+replicaset.apps/api-portal-server-5b8fd8c4f5   0         0         0       6d19h
+replicaset.apps/api-portal-server-846cfc847f   1         1         1       6d19h
+```
+
+6. API portal for VMware Tanzu displays API Groups and detailed documentation from 
+   OpenAPI source URL locations. <br>To modify the OpenAPI source URL locations, 
+   edit deployment’s environment variable `API_PORTAL_SOURCE_URLS` in the installation namespace, 
+   `api-portal` by default.<br><br>
+   Note that the API Portal discovers Spring Cloud Gateway instances in the same K8s cluster by 
+   using the convention below:  
+   
+```shell
+# Note
+# This URL: http://scg-operator.spring-cloud-gateway/openapi is built as follows
+# scg-operator - points to the Spring Cloud Gateway operator
+# spring-cloud-gateway - deployed in this namespace
+# openapi - at the openapi endpoint
+
+# you can set up multiple locations in the same command, comma-separated  
+
+> kubectl set env deployment.apps/api-portal-server API_PORTAL_SOURCE_URLS=http://scg-operator.spring-cloud-gateway/openapi -n api-portal
+```
+
+7. API portal restart after config changes
+
+Please note that teh API Portal server must be restarted after each configuration change, as follows:
+```shell
+> kubectl rollout restart deployment api-portal-server -n api-portal
+deployment.apps/api-portal-server restarted
+```
+
+8. Accessing the API Portal
+
+In a local cluster, the easiest way to access the API Portal is by port-forwarding the Gateway instance and the API Portal:
+```shell
+# animal rescue was installed at 8080, and we have to use this port
+> kubectl -n=animal-rescue  port-forward service/gateway-demo 8080:80
+
+# pick a random port for API Portal
+> kubectl -n=api-portal port-forward service/api-portal-server 8085:8080
+```
+
+URLs:
+```shell
+The API Portal is available at:
+http://localhost:8085/apis
+
+Animal Rescue app is available at:
+http://localhost:8080/rescue
+```
+
+## Cleanup
+
+1. SCG K8s
+* delete the demo gateway `kubectl delete -f demo`
+* delete the demo gateway `kustomize build ./animal-rescue/ | kubectl delete -f -`
+* Uninstall the operator `helm uninstall spring-cloud-gateway -n spring-cloud-gateway`
+
+2. API Portal
+* helm uninstall api-portal -n `api-portal` 
+* kubectl delete namespace `api-portal`
 
 ## Resources
 
-* [GA release blog post](https://tanzu.vmware.com/content/blog/vmware-spring-cloud-gateway-kubernetes-distributed-api-gateway-generally-available)
-* [documentation](https://docs.pivotal.io/scg-k8s/1-0/)
+* [Spring Cloud Gateway GA release blog post](https://tanzu.vmware.com/content/blog/vmware-spring-cloud-gateway-kubernetes-distributed-api-gateway-generally-available)
+* [Spring Cloud Gateway documentation](https://docs.pivotal.io/scg-k8s/1-0/)
+* [API Portal GA release blog post](https://tanzu.vmware.com/content/blog/api-discovery-api-portal-for-vmware-tanzu-is-ga)  
+* [API Portal for VMware Tanzu](https://docs.pivotal.io/api-portal/1-0/index.html)
