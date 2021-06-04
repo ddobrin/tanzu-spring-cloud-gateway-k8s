@@ -4,10 +4,11 @@ A guided tutorial for experimenting with Tanzu Spring Cloud Gateway and the API 
 
 This tutorial covers the following areas:
 1. Pre-requisites
-2. Install Spring Cloud Gateway for K8s - [link](#install-spring-cloud-gateway-for-k8s)
-3. Install API Portal for VMware Tanzu - [link](#install-api-portal)
-4. Deploy Animal Rescue Sample Application (Optional)
-5. Cleanup
+2. [Install Spring Cloud Gateway for K8s](#install-spring-cloud-gateway-for-k8s)
+3. [Install API Portal for VMware Tanzu](#install-api-portal)
+4. [Deploy Animal Rescue Sample Application (Optional)](#deploy-animal-rescue-sample-application)
+5. [Cleanup](#cleanup)
+6. [Resources](#resources)
 
 # Pre-requisites
 
@@ -27,7 +28,7 @@ This tutorial covers the following areas:
 *  [docker desktop](https://www.docker.com/products/docker-desktop) with the
    built-in k8s [Windows k8s instructions](https://docs.docker.com/docker-for-windows/kubernetes/)
    
-### Validate prerequisites
+### Validate pre-requisites
 
 1. Validate your kubectl is pointing at the docker desktop built in k8s. execute `kubectl cluster-info` 
    you should see output similar to what is below 
@@ -75,7 +76,7 @@ is tested with version 1.0.0 so make sure to download 1.0.x release.
 5. Inspect the `scripts` folder notice that it contains two shell scripts, one for publishing the private 
    container images to a registry, and the second scripts runs a helm to install the operator. 
 
-## Load the SCGW container images into docker 
+## Load the SCGW container images into Docker 
 
 In a production deployment we would run the `scripts/relocate-images.sh` to publish the SCGW container images 
 to a private container registry accessible from the k8s cluster that will be running SCGW. In this workshop
@@ -286,7 +287,9 @@ Forwarding from [::1]:8080 -> 8080
    just the start. 
    
 
-# Deploy Animal Rescue Sample Application (Optional)
+# Deploy Animal Rescue Sample Application
+
+This chapter is optional.
 
 The [animal rescue](https://github.com/spring-cloud-services-samples/animal-rescue/) sample 
 application demonstrate many  commonly used features of spring cloud gateway. To deploy 
@@ -360,7 +363,6 @@ statefulset.apps/gateway-demo   2/2     6m54s
 
 2. Extract the downloaded tar.gz file `tar zxf api-portal-for-vmware-tanzu-1.0.0.tgz`; you will find the files shown below.
 ```text
-.
 api-portal-for-vmware-tanzu-1.0.0
 ├── helm
 │   ├── api-portal-1.0.0.tgz
@@ -397,28 +399,24 @@ Instructions are provided for both deployment models.
 
 1. Use the Docker CLI tool or your cloud provider CLI to authenticate to your image registry.
    
-2.  Execute the command `docker load --input images/api-portal-server-1.0.0.tar` to load the API Portal  
+2. Local Docker: Execute the command `docker load --input images/api-portal-server-1.0.0.tar` to load the API Portal  
     container image into docker desktop, you should get output similar to the one below.
 
-````text
-...
-````
-
-2. If you choose to install API Portal to a private container registry, you can use the relocate script as follows:
+3. Private registry: if you choose to install API Portal to a private container registry, you can use the relocate script as follows:
 ```shell
 > ./scripts/relocate-images.sh <registry>/api-portal
 
-For ex.:
+# ex.:
 > ./scripts/relocate-images.sh gcr.io/pa-ddobrin/api-portal
 ```
 
-3. Check your local docker images `docker images` and look for spring cloud gateway images. You should output similar
-   to below.
+4. Check your local docker images `docker images` and look for spring cloud gateway images. <br>You should output similar
+   to the one below.
 
 ```shell
 > docker images | grep portal
-gcr.io/pa-ddobrin/api-portal/api-portal-server                         1.0.0                                                   5bb19cc71708   41 years ago    247MB
-registry.pivotal.io/api-portal/api-portal-server                       1.0.0                                                   5bb19cc71708   41 years ago    247MB```
+gcr.io/pa-ddobrin/api-portal/api-portal-server                             1.0.0                                                   5bb19cc71708   41 years ago    247MB
+dev.registry.pivotal.io/api-portal/api-portal-server                       1.0.0                                                   5bb19cc71708   41 years ago    247MB```
 ```
 
 ## Install API Portal
@@ -453,8 +451,6 @@ api-portal-server:
 4. Execute `./scripts/install-api-portal.sh`. You should see output similar to below:
 ```text
 > ./scripts/install-api-portal.sh
-
-...
 ```
 
 5. execute the command  `kubectl get all -n api-portal` you should see a pod running the API Portal
