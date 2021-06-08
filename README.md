@@ -296,8 +296,31 @@ application demonstrate many  commonly used features of spring cloud gateway. To
 the application and use the login with Auth0 feature you will need a client secret provided
 by the workshop instructor, look for it in the workshop Slack channel. 
 
-1. Edit the file `animal-rescue/overlays/sso-secret-for-gateway/secrets/test-sso-credentials.txt` 
-   set the `client-secret` value to the one provided on the workshop slack 
+1. File changes before deployment
+
+   1.1. Edit the file `animal-rescue/overlays/sso-secret-for-gateway/secrets/test-sso-credentials.txt` 
+   set the `client-secret` value to the one provided on the workshop slack
+   
+   1.2. For API Portal usage, if you choose to install it:<br>
+   * Edit the `gateway-demo` file under /animal-rescue/base
+   * Replace the default `serverUrl` value with the location where the
+     gateway instance will be installed in your environment:
+     ```yaml
+     spec:
+      api:
+        serverUrl: https://test-gateway.spring.animalrescue.online
+     ```
+     Please note that you will also have to add to the CORS allowed origins the URL of the API Portal 
+     ```yaml
+     spec:
+      api:
+         serverUrl: http://localhost:8080
+         cors:
+            allowedOrigins:
+               - http://localhost:8085
+      ```
+   * You can change these values at a later point in time, after installing the Portal, and simply applying the 
+     `gateway-demo.yaml` file with `kubectl`.  
    
 2. Deploy the app using the command `kustomize build ./animal-rescue/ | kubectl apply -f -`
 
@@ -491,7 +514,15 @@ replicaset.apps/api-portal-server-846cfc847f   1         1         1       6d19h
 > kubectl set env deployment.apps/api-portal-server API_PORTAL_SOURCE_URLS=http://scg-operator.spring-cloud-gateway/openapi -n api-portal
 ```
 
-7. API portal restart after config changes
+7. Configuring ServerURL and CORS for API portal accessing the API Gateway
+
+If you have not made the changes to your gateway instance (for Animal Rescue `gateway-demo`) as described in 
+section (1.2) of `Deploy Animal Rescue Sample Application`, please make the changes as descrined in (1.2) and apply the file: <br>
+```shell
+> kubectl apply -f gateway-demo.yaml
+```
+   
+8. API portal restart after config changes
 
 Please note that teh API Portal server must be restarted after each configuration change, as follows:
 ```shell
@@ -499,7 +530,7 @@ Please note that teh API Portal server must be restarted after each configuratio
 deployment.apps/api-portal-server restarted
 ```
 
-8. Accessing the API Portal
+9. Accessing the API Portal
 
 In a local cluster, the easiest way to access the API Portal is by port-forwarding the Gateway instance and the API Portal:
 ```shell
